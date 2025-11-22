@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoV Three.js - Alpha 0.1</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="game-container"></div>
+
+    <div id="ui-layer">
+        <!-- Character Selection Screen -->
+        <div id="char-select-screen">
+            <h1>Select Your Hero</h1>
+            
+            <div class="hero-container">
+                <div class="hero-card" data-hero="warrior" onclick="selectHero('warrior')">
+                    <div class="hero-icon warrior-icon"></div>
+                    <h3>Warrior</h3>
+                    <p>Melee / Tank</p>
+                </div>
+                <div class="hero-card" data-hero="mage" onclick="selectHero('mage')">
+                    <div class="hero-icon mage-icon"></div>
+                    <h3>Mage</h3>
+                    <p>Ranged / Burst</p>
+                </div>
+            </div>
+
+            <button id="lock-in-btn" onclick="lockIn()">Lock In</button>
+        </div>
+
+        <!-- In-Game HUD (Hidden initially) -->
+        <div id="game-hud" style="display: none;">
+            <div id="stats-panel">
+                <div>HP: <span id="hp-val">100</span></div>
+                <div>MP: <span id="mp-val">50</span></div>
+                <div style="color: #ffd700;">Gold: <span id="gold-val">0</span></div>
+            </div>
+
+            <div id="skill-bar">
+                <div class="skill-slot" id="skill-q">
+                    <div class="skill-key">Q</div>
+                    <div class="skill-cooldown-overlay"></div>
+                    <div class="skill-low-mana" style="display: none;"></div>
+                    <div class="skill-icon" id="icon-q"></div>
+                    <div class="skill-timer" id="timer-q"></div>
+                </div>
+                <div class="skill-slot" id="skill-w">
+                    <div class="skill-key">W</div>
+                    <div class="skill-cooldown-overlay"></div>
+                    <div class="skill-low-mana" style="display: none;"></div>
+                    <div class="skill-icon" id="icon-w"></div>
+                    <div class="skill-timer" id="timer-w"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pause Menu -->
+        <div id="pause-menu" style="display: none;">
+            <h2>PAUSED</h2>
+            
+            <div class="pause-content-wrapper">
+                <div class="pause-left-panel">
+                    <div id="hero-skills-info" style="margin-bottom: 20px; text-align: left;">
+                        <h3>Skills</h3>
+                        <div class="skill-desc">
+                            <strong>Q:</strong> <span id="desc-q">...</span>
+                        </div>
+                        <div class="skill-desc">
+                            <strong>W:</strong> <span id="desc-w">...</span>
+                        </div>
+                    </div>
+
+                    <div class="options-menu" style="margin-bottom: 20px;">
+                        <label style="font-size: 1.5rem; color: #ccc;">
+                            <input type="checkbox" id="opt-cd-timer" checked onchange="toggleCooldownTimer()"> Show Cooldown Numbers
+                        </label>
+                    </div>
+
+                    <div class="keybindings">
+                        <h3>Keybindings</h3>
+                        <ul>
+                            <li><span class="key">R-Click</span> Move</li>
+                            <li><span class="key">A</span> + <span class="key">L-Click</span> Attack Move</li>
+                            <li><span class="key">Q / W</span> Use Skills</li>
+                            <li><span class="key">F</span> Recall (Base)</li>
+                            <li><span class="key">ESC</span> Pause / Resume</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="pause-right-panel">
+                    <h3>Battle Stats</h3>
+                    <div class="pause-stat-grid">
+                        <div class="pause-stat-item">
+                            <span class="stat-label">KILLS</span>
+                            <span class="stat-value" id="pause-stat-kills">0</span>
+                        </div>
+                        <div class="pause-stat-item">
+                            <span class="stat-label">DEATHS</span>
+                            <span class="stat-value" id="pause-stat-deaths">0</span>
+                        </div>
+                        <div class="pause-stat-item">
+                            <span class="stat-label">CS</span>
+                            <span class="stat-value" id="pause-stat-cs">0</span>
+                        </div>
+                        <div class="pause-stat-item">
+                            <span class="stat-label">TOWERS</span>
+                            <span class="stat-value" id="pause-stat-towers">0</span>
+                        </div>
+                        <div class="pause-stat-item">
+                            <span class="stat-label">DMG DONE</span>
+                            <span class="stat-value" id="pause-stat-dmg-done">0</span>
+                        </div>
+                        <div class="pause-stat-item">
+                            <span class="stat-label">DMG TAKEN</span>
+                            <span class="stat-value" id="pause-stat-dmg-taken">0</span>
+                        </div>
+                        <div class="pause-stat-item full-width">
+                            <span class="stat-label">GOLD EARNED</span>
+                            <span class="stat-value gold-text" id="pause-stat-gold">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="resumeGame()">Resume</button>
+        </div>
+    </div>
+
+    <!-- Import Map for modules -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "./js/lib/three.module.js"
+            }
+        }
+    </script>
+
+    <!-- Game Over Screen -->
+    <div id="game-over-screen">
+        <h1 id="game-result-title">VICTORY</h1>
+        <div class="stats-container">
+            <div class="stat-row"><span>Kills:</span> <span id="stat-kills">0</span></div>
+            <div class="stat-row"><span>Deaths:</span> <span id="stat-deaths">0</span></div>
+            <div class="stat-row"><span>CS (Minions):</span> <span id="stat-cs">0</span></div>
+            <div class="stat-row"><span>Towers:</span> <span id="stat-towers">0</span></div>
+            <div class="stat-row"><span>Damage Done:</span> <span id="stat-dmg-done">0</span></div>
+            <div class="stat-row"><span>Damage Taken:</span> <span id="stat-dmg-taken">0</span></div>
+        </div>
+        <button onclick="location.reload()">Play Again</button>
+    </div>
+
+    <!-- Buff Bar -->
+    <div id="buff-bar">
+        <!-- Buffs will be injected here -->
+    </div>
+
+    <!-- Mobile Controls -->
+    <div id="mobile-controls">
+        <div id="joystick-container">
+            <div id="joystick-base"></div>
+            <div id="joystick-thumb"></div>
+        </div>
+        <div id="fire-controls">
+            <button id="skill-btn-1">SKILL 1</button>
+            <button id="fire-btn">FIRE</button>
+            <button id="skill-btn-2">SKILL 2</button>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
