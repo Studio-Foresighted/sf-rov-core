@@ -374,6 +374,8 @@ export class Game {
             const dy = moveY - startY;
             const maxDist = base.offsetWidth * 0.45;
             let dist = Math.sqrt(dx*dx + dy*dy);
+            // Sensitivity multiplier for more responsive movement (like ARPG)
+            const sensitivity = 1.5;
             if (dist > maxDist) {
                 moveX = startX + dx * (maxDist / dist);
                 moveY = startY + dy * (maxDist / dist);
@@ -381,9 +383,14 @@ export class Game {
             }
             joystick.style.left = `${(moveX / base.offsetWidth) * 100}%`;
             joystick.style.top = `${(moveY / base.offsetHeight) * 100}%`;
-            // Normalize to [-1,1]
-            joyVec.x = (moveX - startX) / maxDist;
-            joyVec.y = (moveY - startY) / maxDist;
+            // Normalize to [-1,1] and apply sensitivity
+            let normX = (moveX - startX) / maxDist;
+            let normY = (moveY - startY) / maxDist;
+            // Clamp to [-1,1]
+            normX = Math.max(-1, Math.min(1, normX));
+            normY = Math.max(-1, Math.min(1, normY));
+            joyVec.x = normX * sensitivity;
+            joyVec.y = normY * sensitivity;
             e.preventDefault();
         }, { passive: false });
         base.addEventListener('touchend', function(e) {
