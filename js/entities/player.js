@@ -465,7 +465,7 @@ export class Player {
             // Ranged Attack: Spawn Projectile
             // Increased speed from 15 to 20 (approx 1.3x)
             const proj = new Projectile(this.scene, this, this.targetEntity, finalDamage, 20, isCrit);
-            if this.game) {
+                if (this.game) {
                 this.game.entities.push(proj);
             }
         } else {
