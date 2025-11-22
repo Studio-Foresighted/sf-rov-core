@@ -332,20 +332,110 @@ export class Game {
     }
 
     setupMobileControls() {
-        // Remove joystick and mobile controls
-        // Enable touch-to-move: treat touch as mouse click for movement
-        const canvas = this.renderer ? this.renderer.domElement : document.getElementById('game-container');
-        canvas.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 1) {
-                const touch = e.touches[0];
-                const mouseEvent = new MouseEvent('pointerdown', {
-                    clientX: touch.clientX,
-                    clientY: touch.clientY,
-                    button: 0
-                });
-                window.dispatchEvent(mouseEvent);
+        // Joystick logic
+        const joystick = document.getElementById('joystick-thumb');
+        const base = document.getElementById('joystick-base');
+        let dragging = false;
+        let startX = 0, startY = 0, moveX = 0, moveY = 0;
+        let joyVec = { x: 0, y: 0 };
+
+        function getRelative(e, base) {
+            const rect = base.getBoundingClientRect();
+            let x, y;
+            if (e.touches) {
+                x = e.touches[0].clientX - rect.left;
+                y = e.touches[0].clientY - rect.top;
+            } else {
+                x = e.clientX - rect.left;
+                y = e.clientY - rect.top;
             }
+            return { x, y };
+        }
+
+        base.addEventListener('touchstart', function(e) {
+            dragging = true;
+            const pos = getRelative(e, base);
+            startX = pos.x;
+            startY = pos.y;
+            moveX = startX;
+            moveY = startY;
+            joystick.style.left = `${(moveX / base.offsetWidth) * 100}%`;
+            joystick.style.top = `${(moveY / base.offsetHeight) * 100}%`;
+            joystick.style.transition = 'none';
+            e.preventDefault();
         }, { passive: false });
+        base.addEventListener('touchmove', function(e) {
+            if (!dragging) return;
+            const pos = getRelative(e, base);
+            moveX = pos.x;
+            moveY = pos.y;
+            // Clamp to circle
+            const dx = moveX - startX;
+            const dy = moveY - startY;
+            const maxDist = base.offsetWidth * 0.45;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist > maxDist) {
+                moveX = startX + dx * (maxDist / dist);
+                moveY = startY + dy * (maxDist / dist);
+                dist = maxDist;
+            }
+            joystick.style.left = `${(moveX / base.offsetWidth) * 100}%`;
+            joystick.style.top = `${(moveY / base.offsetHeight) * 100}%`;
+            // Normalize to [-1,1]
+            joyVec.x = (moveX - startX) / maxDist;
+            joyVec.y = (moveY - startY) / maxDist;
+            e.preventDefault();
+        }, { passive: false });
+        base.addEventListener('touchend', function(e) {
+            dragging = false;
+            joystick.style.left = '50%';
+            joystick.style.top = '50%';
+            joystick.style.transition = '0.2s';
+            joyVec.x = 0;
+            joyVec.y = 0;
+            e.preventDefault();
+        }, { passive: false });
+
+        // Fire button logic
+        const fireBtn = document.getElementById('fire-btn');
+        fireBtn.addEventListener('touchstart', () => {
+            this.input.isMouseDown = true;
+        });
+        fireBtn.addEventListener('touchend', () => {
+            this.input.isMouseDown = false;
+        });
+
+        // Skill buttons logic
+        const skillBtn1 = document.getElementById('skill-btn-1');
+        const skillBtn2 = document.getElementById('skill-btn-2');
+        skillBtn1.addEventListener('touchstart', () => {
+            this.input.isSkill1Down = true;
+        });
+        skillBtn1.addEventListener('touchend', () => {
+            this.input.isSkill1Down = false;
+        });
+        skillBtn2.addEventListener('touchstart', () => {
+            this.input.isSkill2Down = true;
+        });
+        skillBtn2.addEventListener('touchend', () => {
+            this.input.isSkill2Down = false;
+        });
+
+        // Ensure input object exists
+        if (!this.input) this.input = {};
+        if (typeof this.input.getMoveDirection !== 'function') {
+            this.input.getMoveDirection = () => ({x:0, y:0});
+        }
+
+        // Override getMoveDirection for mobile
+        const origGetMove = this.input.getMoveDirection ? this.input.getMoveDirection.bind(this.input) : () => ({x:0,y:0});
+        this.input.getMoveDirection = () => {
+            if (window.innerWidth < 900 && (dragging || joyVec.x !== 0 || joyVec.y !== 0)) {
+                // Use joystick
+                return { x: joyVec.x, y: joyVec.y };
+            }
+            return origGetMove();
+        };
     }
 
     onMouseMove(event) {
