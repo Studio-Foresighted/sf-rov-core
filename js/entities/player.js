@@ -424,7 +424,7 @@ export class Player {
         if (this.mesh.position.x > 12.0) this.mesh.position.x = 12.0;
         if (this.mesh.position.x < -12.0) this.mesh.position.x = -12.0;
 
-        // Mobile joystick movement
+            // Mobile joystick movement & fire/skills
         if (window.innerWidth < 900 && this.game && this.game.input && typeof this.game.input.getMoveDirection === 'function') {
             const moveDir = this.game.input.getMoveDirection();
             if (moveDir.x !== 0 || moveDir.y !== 0) {
@@ -437,6 +437,55 @@ export class Player {
                 this.isMoving = true;
             }
         }
+                // Fire button triggers basic attack
+                if (this.game.input.isMouseDown) {
+                    // For ranged: fire projectile. For melee: attack nearest enemy.
+                    if (this.type === 'mage') {
+                        // Find nearest enemy
+                        let nearest = null;
+                        let minDist = Infinity;
+                        for (const entity of allEntities) {
+                            if (entity === this || entity.team === this.team || !entity.mesh) continue;
+                            const dist = this.mesh.position.distanceTo(entity.mesh.position);
+                            if (dist < minDist) {
+                                minDist = dist;
+                                nearest = entity;
+                            }
+                        }
+                        if (nearest && minDist < this.attackRange + 2) {
+                            this.targetEntity = nearest;
+                            this.startAttack();
+                        }
+                    } else {
+                        // Melee: attack nearest enemy
+                        let nearest = null;
+                        let minDist = Infinity;
+                        for (const entity of allEntities) {
+                            if (entity === this || entity.team === this.team || !entity.mesh) continue;
+                            const dist = this.mesh.position.distanceTo(entity.mesh.position);
+                            if (dist < minDist) {
+                                minDist = dist;
+                                nearest = entity;
+                            }
+                        }
+                        if (nearest && minDist < this.attackRange + 1) {
+                            this.targetEntity = nearest;
+                            this.startAttack();
+                        }
+                    }
+                }
+
+                // Skill buttons
+                if (this.game.input.isSkill1Down) {
+                    // Cast Q at current facing direction
+                    const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(this.mesh.quaternion);
+                    const targetPos = this.mesh.position.clone().add(forward.multiplyScalar(this.attackRange));
+                    this.castAbility('q', targetPos);
+                }
+                if (this.game.input.isSkill2Down) {
+                    // Cast W at current position
+                    this.castAbility('w', this.mesh.position.clone());
+                }
     }
 
     startAttack() {
