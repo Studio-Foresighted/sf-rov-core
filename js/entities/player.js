@@ -424,6 +424,19 @@ export class Player {
         if (this.mesh.position.x > 12.0) this.mesh.position.x = 12.0;
         if (this.mesh.position.x < -12.0) this.mesh.position.x = -12.0;
 
+        // Mobile joystick movement
+        if (window.innerWidth < 900 && this.game && this.game.input && typeof this.game.input.getMoveDirection === 'function') {
+            const moveDir = this.game.input.getMoveDirection();
+            if (moveDir.x !== 0 || moveDir.y !== 0) {
+                this.mesh.position.x += moveDir.x * this.speed * dt * 2; // Double speed for responsiveness
+                this.mesh.position.z += moveDir.y * this.speed * dt * 2;
+                // Face movement direction
+                const targetX = this.mesh.position.x + moveDir.x;
+                const targetZ = this.mesh.position.z + moveDir.y;
+                this.mesh.lookAt(targetX, this.mesh.position.y, targetZ);
+                this.isMoving = true;
+            }
+        }
     }
 
     startAttack() {
@@ -452,7 +465,7 @@ export class Player {
             // Ranged Attack: Spawn Projectile
             // Increased speed from 15 to 20 (approx 1.3x)
             const proj = new Projectile(this.scene, this, this.targetEntity, finalDamage, 20, isCrit);
-            if (this.game) {
+            if this.game) {
                 this.game.entities.push(proj);
             }
         } else {

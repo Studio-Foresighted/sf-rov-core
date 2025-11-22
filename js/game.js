@@ -408,18 +408,22 @@ export class Game {
         // Skill buttons logic
         const skillBtn1 = document.getElementById('skill-btn-1');
         const skillBtn2 = document.getElementById('skill-btn-2');
-        skillBtn1.addEventListener('touchstart', () => {
-            this.input.isSkill1Down = true;
-        });
-        skillBtn1.addEventListener('touchend', () => {
-            this.input.isSkill1Down = false;
-        });
-        skillBtn2.addEventListener('touchstart', () => {
-            this.input.isSkill2Down = true;
-        });
-        skillBtn2.addEventListener('touchend', () => {
-            this.input.isSkill2Down = false;
-        });
+        if (skillBtn1) {
+            skillBtn1.addEventListener('touchstart', () => {
+                this.input.isSkill1Down = true;
+            });
+            skillBtn1.addEventListener('touchend', () => {
+                this.input.isSkill1Down = false;
+            });
+        }
+        if (skillBtn2) {
+            skillBtn2.addEventListener('touchstart', () => {
+                this.input.isSkill2Down = true;
+            });
+            skillBtn2.addEventListener('touchend', () => {
+                this.input.isSkill2Down = false;
+            });
+        }
 
         // Ensure input object exists
         if (!this.input) this.input = {};
@@ -428,7 +432,7 @@ export class Game {
         }
 
         // Override getMoveDirection for mobile
-        const origGetMove = this.input.getMoveDirection ? this.input.getMoveDirection.bind(this.input) : () => ({x:0,y:0});
+        const origGetMove = typeof this.input.getMoveDirection === 'function' ? this.input.getMoveDirection.bind(this.input) : () => ({x:0,y:0});
         this.input.getMoveDirection = () => {
             if (window.innerWidth < 900 && (dragging || joyVec.x !== 0 || joyVec.y !== 0)) {
                 // Use joystick
