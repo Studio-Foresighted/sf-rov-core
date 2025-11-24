@@ -21,6 +21,7 @@ export class Game {
         
         this.entities = []; // All game entities (minions, towers, etc)
         this.lastWaveTime = 0;
+        this.waveNumber = 0;
         
         this.isPaused = false;
         this.awaitingAttackMove = false;
@@ -107,6 +108,9 @@ export class Game {
             this.skillIcons.generateIcon('mage_q', 'icon-q');
             this.skillIcons.generateIcon('mage_w', 'icon-w');
         }
+
+        // Auto-pause on start
+        this.togglePause();
     }
 
     initThreeJS() {
@@ -491,42 +495,7 @@ export class Game {
         const interactableObjects = this.entities.map(e => e.mesh).filter(m => m);
         const entityIntersects = this.raycaster.intersectObjects(interactableObjects);
 
-        // Handle Attack Move (Left Click)
-        if (this.awaitingAttackMove && event.button === 0) {
-            this.awaitingAttackMove = false;
-            document.body.style.cursor = 'default';
-            if (this.player.rangeIndicator) this.player.rangeIndicator.visible = false;
-
-            // If we clicked an entity, attack it directly
-            if (entityIntersects.length > 0) {
-                const targetMesh = entityIntersects[0].object;
-                let current = targetMesh;
-                while(current && !current.userData.entity) current = current.parent;
-                
-                if (current && current.userData.entity) {
-                    const target = current.userData.entity;
-                    // Prevent attacking friendly units
-                    if (target.team === this.player.team) {
-                        console.log("Cannot attack friendly unit!");
-                        return;
-                    }
-                    this.player.attack(target);
-                    this.createClickEffect(current.position, 0xff0000);
-                    return;
-                }
-            }
-
-            // Otherwise, Attack Move to ground
-            const intersects = this.raycaster.intersectObject(this.plane);
-            if (intersects.length > 0) {
-                const point = intersects[0].point;
-                this.player.attackMove(point);
-                this.createClickEffect(point, 0xff4500); // Orange for Attack Move
-            }
-            return;
-        }
-        
-        // Cancel Attack Move if we do something else (like Right Click)
+        // Clear awaitingAttackMove state if it was active (since we are clicking now)
         if (this.awaitingAttackMove) {
             this.awaitingAttackMove = false;
             document.body.style.cursor = 'default';
@@ -543,13 +512,12 @@ export class Game {
 
             if (current && current.userData.entity) {
                 const targetEntity = current.userData.entity;
-                if (event.button === 2) { // Right click
+                
+                // Left Click (0) or Right Click (2) on an entity
+                if (event.button === 0 || event.button === 2) {
                     // Prevent attacking friendly units
                     if (targetEntity.team === this.player.team) {
-                        console.log("Cannot attack friendly unit!");
-                        // If friendly, maybe just move there?
-                        // For now, just return to prevent attack.
-                        // Or better: treat as move command to that location
+                        // If friendly, treat as move command to that location
                         const point = current.position.clone();
                         point.y = 0;
                         this.player.moveTo(point);
@@ -557,11 +525,10 @@ export class Game {
                         return;
                     }
 
-                    console.log("Attacking target:", targetEntity);
+                    // Attack enemy
                     this.player.attack(targetEntity);
-                    // Visual feedback
                     this.createClickEffect(current.position, 0xff0000);
-                    return; // Don't move to ground if we clicked an entity
+                    return;
                 }
             }
         }
@@ -571,10 +538,13 @@ export class Game {
 
         if (intersects.length > 0) {
             const point = intersects[0].point;
-            // Right click to move (standard MOBA)
-            if (event.button === 2) {
+            
+            if (event.button === 0) { // Left Click -> Attack Move
+                this.player.attackMove(point);
+                this.createClickEffect(point, 0xff4500); // Orange for Attack Move
+            } else if (event.button === 2) { // Right Click -> Move
                 this.player.moveTo(point);
-                this.createClickEffect(point, 0x00ff00);
+                this.createClickEffect(point, 0x00ff00); // Green for Move
             }
         }
     }
@@ -616,10 +586,15 @@ export class Game {
 
         const elapsedTime = this.clock.getElapsedTime();
 
-        // Spawn Minions every 30s (or 10s for testing)
-        if (elapsedTime - this.lastWaveTime > 10) {
+        // Spawn Minions every 10s
+        // First wave spawns 75% faster (at 2.5s instead of 10s)
+        const waveInterval = 10;
+        const currentInterval = (this.waveNumber === 0) ? (waveInterval * 0.25) : waveInterval;
+
+        if (elapsedTime - this.lastWaveTime > currentInterval) {
             this.spawnMinionWave();
             this.lastWaveTime = elapsedTime;
+            this.waveNumber++;
             console.log("Minion Wave Spawned!");
         }
 
